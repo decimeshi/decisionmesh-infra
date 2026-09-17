@@ -21,8 +21,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
       openbao:
         condition: service_healthy
     deploy:
@@ -47,15 +45,6 @@ services:
       resources:
         limits:
           memory: 320m
-
-  kafka:
-    restart: unless-stopped
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    deploy:
-      resources:
-        limits:
-          memory: 768m
 
   openbao:
     restart: unless-stopped
@@ -87,6 +76,5 @@ services:
 
 volumes:
   postgres-data:
-  kafka-data:
   openbao-data:
   ollama-data:

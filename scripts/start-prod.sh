@@ -15,9 +15,9 @@ fail() { echo -e "${RED}[FAIL]${NC}  $*"; exit 1; }
 
 [[ -f .env.prod ]] || fail ".env.prod not found."
 
-info "Starting prod infrastructure (postgres, redis, kafka, openbao)..."
+info "Starting prod infrastructure (postgres, redis, openbao)..."
 docker compose -f backend/docker-compose.yml -f backend/docker-compose.prod.yml --env-file .env.prod \
-  up -d postgres redis kafka openbao ollama
+  up -d postgres redis openbao ollama
 
 sleep 10
 

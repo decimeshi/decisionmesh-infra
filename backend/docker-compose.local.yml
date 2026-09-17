@@ -11,7 +11,6 @@
 # Ports exposed to host (for Quarkus running locally):
 #   PostgreSQL : localhost:5432
 #   Redis      : localhost:6379
-#   Kafka      : localhost:9092
 #   OpenBao    : localhost:8200
 # ============================================================
 
@@ -81,54 +80,6 @@ services:
       - internal
 
   # ----------------------------------------------------------
-  # Kafka — KRaft mode
-  # Advertises on both internal (kafka:9092) and
-  # external (localhost:9092) so Quarkus on the host can connect
-  # ----------------------------------------------------------
-  kafka:
-    image: apache/kafka:3.7.0
-    container_name: decisionmesh-local-kafka-1
-    restart: unless-stopped
-    ports:
-      # Host 9092 -> container 9094 (the EXTERNAL listener), NOT container 9092
-      # (PLAINTEXT). PLAINTEXT advertises "kafka:9092", which only resolves
-      # inside the compose network; EXTERNAL advertises "localhost:9092" (see
-      # KAFKA_ADVERTISED_LISTENERS below), which is what a host-side Quarkus
-      # process needs. Mapping host 9092 -> container 9092 (PLAINTEXT) let the
-      # initial bootstrap connection succeed, but every metadata refresh after
-      # that handed the client PLAINTEXT's "kafka:9092" address instead ->
-      # UnknownHostException once the client tried to actually produce.
-      - "9092:9094"
-    environment:
-      KAFKA_NODE_ID:                                  1
-      KAFKA_PROCESS_ROLES:                            broker,controller
-      KAFKA_LISTENERS:                                PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:9094
-      KAFKA_ADVERTISED_LISTENERS:                     PLAINTEXT://kafka:9092,EXTERNAL://localhost:9092
-      KAFKA_CONTROLLER_LISTENER_NAMES:                CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP:           PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_CONTROLLER_QUORUM_VOTERS:                 1@kafka:9093
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:         1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR:            1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE:                "true"
-      KAFKA_CLUSTER_ID:                               ${KAFKA_CLUSTER_ID:?KAFKA_CLUSTER_ID must be set in .env.local}
-      KAFKA_HEAP_OPTS:                                "-Xmx512m -Xms256m"
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-    volumes:
-      - kafka-local-data:/var/lib/kafka/data
-    deploy:
-      resources:
-        limits:
-          memory: 768m
-    networks:
-      - internal
-
-  # ----------------------------------------------------------
   # OpenBao — DEV MODE
   # Auto-unseals. Token = dev-root-token (never changes).
   # Data lost on restart — fine for local dev.
@@ -192,7 +143,7 @@ services:
           # memory (5.5 GiB) than is available (4.0 GiB)"). Docker Desktop's
           # own VM has ~15GB total on this 32GB-RAM machine (Windows + IDE +
           # the natively-running Quarkus JVM need the rest); 8g leaves
-          # headroom for Postgres/Redis/Kafka/Vault/Grafana/Prometheus
+          # headroom for Postgres/Redis/Vault/Grafana/Prometheus
           # alongside it, and comfortably fits every model in the current
           # local test set (largest is Gemma 2 9B at ~5.5GB).
           memory: 8g
@@ -201,5 +152,4 @@ services:
 
 volumes:
   postgres-local-data:
-  kafka-local-data:
   ollama-local-data:
