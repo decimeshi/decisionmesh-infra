@@ -65,6 +65,40 @@ services:
         limits:
           memory: 192m
 
+  # Auto-unseal sidecar (prod) — added 2026-09-20 to remove the manual
+  # unseal-prod.sh step after every prod restart. Mirrors staging's
+  # openbao-unsealer, adapted for prod's real image/script pairing:
+  # prod runs openbao/openbao:2 (the `bao` binary), so this uses
+  # openbao-unsealer.sh (bao status/unseal), NOT vault-unsealer.sh
+  # (staging's HashiCorp `vault` binary script) — using the wrong
+  # script for the wrong binary would fail silently in a loop.
+  #
+  # REQUIRES a one-time manual step before first start: extract the
+  # single unseal key openbao-unsealer.sh expects as a plain file
+  # (unlike unseal-prod.sh, which parses the full init JSON itself):
+  #   python3 -c "import json; print(json.load(open('/opt/decisionmesh/secrets/openbao-init.json'))['unseal_keys_b64'][0])" \
+  #     > /opt/decisionmesh/secrets/openbao-prod-unseal.key
+  #   chmod 600 /opt/decisionmesh/secrets/openbao-prod-unseal.key
+  openbao-unsealer:
+    image: openbao/openbao:2
+    container_name: decisionmesh-openbao-unsealer-1
+    restart: unless-stopped
+    depends_on:
+      openbao:
+        condition: service_healthy
+    environment:
+      BAO_ADDR: http://openbao:8200
+    entrypoint: ["/bin/sh", "/usr/local/bin/unsealer.sh"]
+    volumes:
+      - /opt/decisionmesh/infra/scripts/openbao-unsealer.sh:/usr/local/bin/unsealer.sh:ro
+      - /opt/decisionmesh/secrets/openbao-prod-unseal.key:/unseal.key:ro
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    networks:
+      - internal
+
   ollama:
     restart: unless-stopped
     volumes:

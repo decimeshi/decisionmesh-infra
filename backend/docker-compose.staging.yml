@@ -148,10 +148,17 @@ services:
     volumes:
       - /opt/decisionmesh/infra/scripts/vault-unsealer.sh:/usr/local/bin/unsealer.sh:ro
       - /opt/decisionmesh/secrets/vault-staging-unseal.key:/unseal.key:ro
+    # Raised 64m -> 128m (2026-09-20): observed at 93.99% of the old 64m
+    # cap (60.16 MiB) in a docker stats snapshot — never actually
+    # OOM-killed (confirmed via `docker inspect .State.OOMKilled` =
+    # false, RestartCount = 0), but too thin a margin for a
+    # HashiCorp vault CLI binary's baseline footprint. Cheap to double —
+    # this is a ~4.8 GiB declared-limits host with several GiB of
+    # headroom, not a capacity-constrained bump.
     deploy:
       resources:
         limits:
-          memory: 64m
+          memory: 128m
     networks:
       - internal
 
